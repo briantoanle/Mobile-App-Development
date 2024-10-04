@@ -5,16 +5,16 @@ import 'details_screen.dart';
 class HomeScreen extends StatelessWidget {
   final List<Recipe> recipes = [
     Recipe(
-      name: 'Spaghetti Carbonara',
+      name: 'Spaghetti ',
       ingredients: [
         'Spaghetti',
-        'Eggs',
-        'Pancetta',
-        'Parmesan cheese',
-        'Black pepper'
+        'Ground Beef',
+        'Black pepper',
+        'Onion',
+        'Spaghetti Sauce'
       ],
       instructions:
-          '1. Cook pasta\n2. Fry pancetta\n3. Mix eggs and cheese\n4. Combine all ingredients',
+          '1. Cook pasta\n2. Sauté onion \n3. Fry ground beef \n4. Pour spaghetti sauce on\n5. Combine all ingredients',
     ),
     Recipe(
       name: 'Chicken Curry',
