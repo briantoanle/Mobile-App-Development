@@ -551,79 +551,213 @@ class StockDetailScreen extends StatefulWidget {
 
 class _StockDetailScreenState extends State<StockDetailScreen> {
   List<NewsArticle> stockNews = [];
+  List<double> historicalPrices = [];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadStockNews();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      await Future.wait([
+        _loadStockNews(),
+        _loadHistoricalData(),
+      ]);
+      setState(() {
+        isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading data: ${e.toString()}');
+    }
+  }
+
+  Future<void> _loadHistoricalData() async {
+    final prices = await StockService.getHistoricalData(widget.stock.symbol);
+    setState(() {
+      historicalPrices = prices;
+    });
   }
 
   Future<void> _loadStockNews() async {
-    try {
-      final newsArticles =
-          await StockService.getStockNewsForSymbol(widget.stock.symbol);
-      setState(() {
-        stockNews = newsArticles.take(20).toList(); // Limit to 20 articles
-      });
-    } catch (e) {
-      debugPrint('Error loading stock news: ${e.toString()}');
-    }
+    final newsArticles =
+        await StockService.getStockNewsForSymbol(widget.stock.symbol);
+    setState(() {
+      stockNews = newsArticles.take(5).toList(); // Limit to 5 articles
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(widget.stock.companyName)),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(),
+                    SizedBox(height: 16),
+                    _buildPriceChart(),
+                    SizedBox(height: 24),
+                    _buildMetrics(),
+                    SizedBox(height: 24),
+                    _buildNewsSection(),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.stock.symbol,
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
+        Row(
           children: [
             Text(
-              widget.stock.symbol,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              '\$${widget.stock.currentPrice.toStringAsFixed(2)}',
+              style: TextStyle(fontSize: 20),
             ),
-            SizedBox(height: 16),
+            SizedBox(width: 8),
             Text(
-                '10-Day Avg Trading Volume: ${widget.stock.metrics['10DayAverageTradingVolume']?.toStringAsFixed(2) ?? 'N/A'}'),
-            Text(
-                '52-Week High: \$${widget.stock.metrics['52WeekHigh']?.toStringAsFixed(2) ?? 'N/A'}'),
-            Text(
-                '52-Week Low: \$${widget.stock.metrics['52WeekLow']?.toStringAsFixed(2) ?? 'N/A'}'),
-            SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: stockNews.length,
-                itemBuilder: (context, index) {
-                  final article = stockNews[index];
-                  return Card(
-                    margin: EdgeInsets.all(8.0),
-                    child: ListTile(
-                      leading: article.thumbnailUrl != null
-                          ? Image.network(
-                              article.thumbnailUrl!,
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                      title: Text(article.title),
-                      subtitle: Text(
-                        article.summary,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      onTap: () {
-                        // Open news article URL
-                        _openArticleUrl(article.url);
-                      },
-                    ),
-                  );
-                },
+              '${widget.stock.changePercentage >= 0 ? '+' : ''}${widget.stock.changePercentage.toStringAsFixed(2)}%',
+              style: TextStyle(
+                fontSize: 16,
+                color: widget.stock.changePercentage >= 0
+                    ? Colors.green
+                    : Colors.red,
               ),
             ),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _buildPriceChart() {
+    if (historicalPrices.isEmpty) {
+      return SizedBox.shrink();
+    }
+
+    return Container(
+      height: 200,
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(show: true),
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(showTitles: true),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+          ),
+          borderData: FlBorderData(show: true),
+          lineBarsData: [
+            LineChartBarData(
+              spots: historicalPrices
+                  .asMap()
+                  .entries
+                  .map((e) => FlSpot(e.key.toDouble(), e.value))
+                  .toList(),
+              isCurved: true,
+              color: Colors.blue,
+              barWidth: 2,
+              dotData: FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                color: Colors.blue.withOpacity(0.1),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetrics() {
+    final metrics = widget.stock.metrics;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Key Metrics',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
+        _buildMetricRow(
+            'Market Cap', metrics['marketCapitalization']?.toString() ?? 'N/A'),
+        _buildMetricRow('P/E Ratio',
+            metrics['peBasicExclExtraTTM']?.toStringAsFixed(2) ?? 'N/A'),
+        _buildMetricRow('52W High',
+            '\$${metrics['52WeekHigh']?.toStringAsFixed(2) ?? 'N/A'}'),
+        _buildMetricRow('52W Low',
+            '\$${metrics['52WeekLow']?.toStringAsFixed(2) ?? 'N/A'}'),
+        _buildMetricRow('Avg Volume',
+            metrics['10DayAverageTradingVolume']?.toStringAsFixed(2) ?? 'N/A'),
+        _buildMetricRow('Beta', metrics['beta']?.toStringAsFixed(2) ?? 'N/A'),
+        _buildMetricRow('Dividend Yield',
+            '${(metrics['dividendYieldIndicatedAnnual'] ?? 0).toStringAsFixed(2)}%'),
+      ],
+    );
+  }
+
+  Widget _buildMetricRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontWeight: FontWeight.w500)),
+          Text(value),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNewsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Latest News',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
+        ...stockNews.map((article) => _buildNewsCard(article)).toList(),
+      ],
+    );
+  }
+
+  Widget _buildNewsCard(NewsArticle article) {
+    return Card(
+      margin: EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        title: Text(article.title),
+        subtitle: Text(
+          article.summary,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        onTap: () => _openArticleUrl(article.url),
       ),
     );
   }
@@ -633,7 +767,9 @@ class _StockDetailScreenState extends State<StockDetailScreen> {
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
-      throw 'Could not launch $url';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open article')),
+      );
     }
   }
 }
