@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "436564629857",
+    "project_id": "project-2-mobileappdev",
+    "storage_bucket": "project-2-mobileappdev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:436564629857:android:031cc10bbbb733b11acd20",
+        "android_client_info": {
+          "package_name": "com.project2_stocktracker.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDM1lcJGEdlX_A4jJsA_UgXH8ck1ifIk2A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
