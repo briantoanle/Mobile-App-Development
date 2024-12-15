@@ -12,7 +12,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: FirebaseOptions(
-        apiKey: "AIzaSyCUjW2ubYA7isWvadSnoS6e0gxnXU4ob5E",
+        apiKey: "REPLACE-WITH-YOUR-OWN",
         authDomain: "project-2-mobileappdev.firebaseapp.com",
         projectId: "project-2-mobileappdev",
         storageBucket: "project-2-mobileappdev.firebasestorage.app",
